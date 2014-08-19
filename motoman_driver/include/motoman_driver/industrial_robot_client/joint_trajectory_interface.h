@@ -71,7 +71,7 @@ public:
  /**
   * \brief Default constructor.
   */
-    JointTrajectoryInterface() : default_joint_pos_(0.0), default_vel_ratio_(0.1), default_duration_(10.0) {};
+    JointTrajectoryInterface() : default_joint_pos_(0.0), default_vel_ratio_(0.1), default_duration_(10.0), last_time_(-1) {};
 
     /**
      * \brief Initialize robot connection using default method.
@@ -265,6 +265,10 @@ private:
    */
   bool jointTrajectoryCB(industrial_msgs::CmdJointTrajectory::Request &req,
                          industrial_msgs::CmdJointTrajectory::Response &res);
+
+  /// The last time value of the previous trajectory, in seconds since
+  /// the start of the first trajectory.
+  double last_time_;
 };
 
 } //joint_trajectory_interface

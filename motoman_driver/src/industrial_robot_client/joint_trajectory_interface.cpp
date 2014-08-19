@@ -150,6 +150,17 @@ void JointTrajectoryInterface::jointTrajectoryCB(const trajectory_msgs::JointTra
 
 bool JointTrajectoryInterface::trajectory_to_msgs(const trajectory_msgs::JointTrajectoryConstPtr& traj, std::vector<SimpleMessage>* msgs)
 {
+  double time_offset = 0;
+  double time = 0;
+  size_t seq_offset = 0;
+
+  // Check if we need to join with the previous trajectory.
+  if(last_time_ != -1)
+  {
+    seq_offset = 1;
+    time_offset = last_time_;
+  }
+
   msgs->clear();
 
   // check for valid trajectory
@@ -169,12 +180,22 @@ bool JointTrajectoryInterface::trajectory_to_msgs(const trajectory_msgs::JointTr
     if (!transform(rbt_pt, &xform_pt))
       return false;
 
+    // Add time_offset which is non-zero if we are continuing a previous trajectory.
+    time = xform_pt.time_from_start.toSec() + time_offset;
+    xform_pt.time_from_start = ros::Duration(time);
+
+    // If we are continuing a previous trajectory don't let the first
+    // sequence number be zero.
+    size_t seq = i + seq_offset;
+
     // convert trajectory point to ROS message
-    if (!create_message(i, xform_pt, &msg))
+    if (!create_message(seq, xform_pt, &msg))
       return false;
 
     msgs->push_back(msg);
   }
+
+  last_time_ = time;
 
   return true;
 }
