@@ -32,6 +32,7 @@
 #ifndef JOINT_TRAJECTORY_INTERFACE_H
 #define JOINT_TRAJECTORY_INTERFACE_H
 
+#include <boost/thread/mutex.hpp>
 #include <map>
 #include <vector>
 #include <string>
@@ -44,6 +45,7 @@
 #include "simple_message/smpl_msg_connection.h"
 #include "simple_message/socket/tcp_client.h"
 #include "simple_message/messages/joint_traj_pt_message.h"
+#include "motoman_driver/industrial_robot_client/stop_monitor.h"
 #include "trajectory_msgs/JointTrajectory.h"
 
 namespace industrial_robot_client
@@ -267,8 +269,10 @@ private:
                          industrial_msgs::CmdJointTrajectory::Response &res);
 
   /// The last time value of the previous trajectory, in seconds since
-  /// the start of the first trajectory.
+  /// the start of the first trajectory.  -1 if no previous trajectory.
   double last_time_;
+  boost::mutex last_time_mutex_;
+  StopMonitor stop_monitor_;
 };
 
 } //joint_trajectory_interface

@@ -30,6 +30,7 @@
  */
 
 #include <algorithm>
+#include <boost/thread/mutex.hpp>
 #include "motoman_driver/industrial_robot_client/joint_trajectory_interface.h"
 #include "simple_message/joint_traj_pt.h"
 #include "industrial_utils/param_utils.h"
@@ -49,6 +50,9 @@ namespace joint_trajectory_interface
 
 bool JointTrajectoryInterface::init(std::string default_ip, int default_port)
 {
+  stop_monitor_.setTimeWindow(0.5);
+  stop_monitor_.setThreshold(1e-5);
+
   std::string ip;
   int port;
 
@@ -155,11 +159,13 @@ bool JointTrajectoryInterface::trajectory_to_msgs(const trajectory_msgs::JointTr
   size_t seq_offset = 0;
 
   // Check if we need to join with the previous trajectory.
+  last_time_mutex_.lock();
   if(last_time_ != -1)
   {
     seq_offset = 1;
     time_offset = last_time_;
   }
+  last_time_mutex_.unlock();
 
   msgs->clear();
 
@@ -195,7 +201,9 @@ bool JointTrajectoryInterface::trajectory_to_msgs(const trajectory_msgs::JointTr
     msgs->push_back(msg);
   }
 
+  last_time_mutex_.lock();
   last_time_ = time;
+  last_time_mutex_.unlock();
 
   return true;
 }
@@ -395,6 +403,15 @@ bool JointTrajectoryInterface::is_valid(const trajectory_msgs::JointTrajectory &
 void JointTrajectoryInterface::jointStateCB(const sensor_msgs::JointStateConstPtr &msg)
 {
   this->cur_joint_pos_ = *msg;
+
+  stop_monitor_.addState(msg);
+  if(stop_monitor_.justStopped())
+  {
+    ROS_INFO("StopMonitor justStopped() == true");
+    last_time_mutex_.lock();
+    last_time_ = -1;
+    last_time_mutex_.unlock();
+  }
 }
 
 } //joint_trajectory_interface

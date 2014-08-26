@@ -35,7 +35,9 @@ set(CLIENT_SRC_FILES
   src/industrial_robot_client/joint_feedback_relay_handler.cpp
   src/industrial_robot_client/robot_state_interface.cpp
   src/industrial_robot_client/joint_trajectory_interface.cpp
-  src/industrial_robot_client/joint_trajectory_streamer.cpp)
+  src/industrial_robot_client/joint_trajectory_streamer.cpp
+  src/industrial_robot_client/stop_monitor.cpp
+)
 	
 ###########
 ## Build ##
