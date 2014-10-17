@@ -344,6 +344,11 @@ void JointTrajectoryInterface::trajectoryStop()
   JointTrajPtMessage jMsg;
   SimpleMessage msg, reply;
 
+  // Don't try to join future trajectories with the one we are interrupting.
+  last_time_mutex_.lock();
+  last_time_ = -1;
+  last_time_mutex_.unlock();
+
   ROS_INFO("Joint trajectory handler: entering stopping state");
   jMsg.setSequence(SpecialSeqValues::STOP_TRAJECTORY);
   jMsg.toRequest(msg);
