@@ -33,7 +33,7 @@
 #define CTRLGROUP_H
 
 
-#define Q_SIZE 200
+#define Q_SIZE 15
 
 #if (DX100 || DX200 || FS100)
 #define Q_LOCK_TIMEOUT 1000

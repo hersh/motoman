@@ -1592,6 +1592,8 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller) //<-- IP_CLK prio
 	LONG time;
 	LONG q_time;
 	int axis;
+  LONG orig_q_cnt;
+  BOOL overage;
 	//BOOL bNoData = TRUE;  // for testing
 	
 	printf("IncMoveTask Started\r\n");
@@ -1621,6 +1623,7 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller) //<-- IP_CLK prio
 				// Lock the q before manipulating it
 				if(mpSemTake(q->q_lock, Q_LOCK_TIMEOUT) == OK)
 				{
+          orig_q_cnt = q->cnt;
 					if(q->cnt > 0)
 					{
 						time = q->data[q->idx].time;
@@ -1678,6 +1681,22 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller) //<-- IP_CLK prio
 						memset(&moveData.grp_pos_info[i].pos, 0x00, sizeof(LONG) * MP_GRP_AXES_NUM);
 					}
 					
+          overage = FALSE;
+          // For debugging of "excessive segment" errors, print out any excess.
+          for (axis = 0; axis<MP_GRP_AXES_NUM; axis++)
+          {
+            if(controller->ctrlGroups[i]->maxInc.maxIncrement[axis] > 0 &&
+               abs(moveData.grp_pos_info[i].pos[axis]) >= controller->ctrlGroups[i]->maxInc.maxIncrement[axis])
+            {
+              overage = TRUE;
+              printf("mpExRcsIncrementMove over speed limit: axis %d = %d (max %d)\r\n",
+                     axis, moveData.grp_pos_info[0].pos[axis], controller->ctrlGroups[i]->maxInc.maxIncrement[axis]);
+            }
+          }
+          if(overage)
+            printf("speed limit exceeded start q->cnt = %d, end q->cnt = %d",
+                   orig_q_cnt, q->cnt);
+
 					// Unlock the q					
 					mpSemGive(q->q_lock);
 				}
@@ -1687,7 +1706,7 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller) //<-- IP_CLK prio
 					memset(&moveData.grp_pos_info[i].pos, 0x00, sizeof(LONG) * MP_GRP_AXES_NUM);
 					continue;
 				}
-			}	
+			}
 
 #if DX100
 			// first robot
