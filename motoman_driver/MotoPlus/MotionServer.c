@@ -1694,7 +1694,7 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller) //<-- IP_CLK prio
             }
           }
           if(overage)
-            printf("speed limit exceeded start q->cnt = %d, end q->cnt = %d",
+            printf("speed limit exceeded start q->cnt = %d, end q->cnt = %d\r\n",
                    orig_q_cnt, q->cnt);
 
 					// Unlock the q					
