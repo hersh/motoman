@@ -120,7 +120,7 @@ extern int localtime_r(const time_t* timer, struct tm* timeBuffer);
 // It implements FBD_printf() which writes into a circular buffer
 // of characters, which can be printed to stdout and cleared with
 // a call to FBD_printBuffer().
-#define FBD_BUFFER_LEN 1000
+#define FBD_BUFFER_LEN 10000
 #define FBD_LOCAL_BUF_LEN 500
 char FBD_buffer[FBD_BUFFER_LEN];
 int FBD_size = 0;
@@ -2009,7 +2009,7 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
                     controller->ctrlGroups[i]->maxInc.maxIncrement[axis])
             {
               FBD_printf("mpExMv axis %d over: %d (max %d)\r\n", axis,
-                         moveData.grp_pos_info[0].pos[axis],
+                         moveData.grp_pos_info[i].pos[axis],
                          controller->ctrlGroups[i]->maxInc.maxIncrement[axis]);
             }
           }
@@ -2055,6 +2055,7 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
       }
 #else
       ret = mpExRcsIncrementMove(&moveData);
+/*
       FBD_printf("mpExMv: %d, %d, %d, %d, %d, %d ret %d\r\n",
                  moveData.grp_pos_info[0].pos[0],
                  moveData.grp_pos_info[0].pos[1],
@@ -2062,6 +2063,7 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
                  moveData.grp_pos_info[0].pos[3],
                  moveData.grp_pos_info[0].pos[4],
                  moveData.grp_pos_info[0].pos[5], ret);
+*/
       if (ret != 0)
       {
         if (ret == -3)
