@@ -116,6 +116,81 @@ extern int localtime_r(const time_t* timer, struct tm* timeBuffer);
 // Time info
 //-------------------------------------------------------------
 
+// FBD stands for Fixed-size Debug Buffer.
+// It implements FBD_printf() which writes into a circular buffer
+// of characters, which can be printed to stdout and cleared with
+// a call to FBD_printBuffer().
+#define FBD_BUFFER_LEN 1000
+#define FBD_LOCAL_BUF_LEN 500
+char FBD_buffer[FBD_BUFFER_LEN];
+int FBD_size = 0;
+int FBD_end = 0;
+
+void FBD_addChars(const char* chars, int count)
+{
+  FBD_size += count;
+  while (FBD_end + count >= FBD_BUFFER_LEN)
+  {
+    int num = FBD_BUFFER_LEN - FBD_end;
+    memcpy(FBD_buffer + FBD_end, chars, num);
+    chars += num;
+    count -= num;
+    FBD_end = 0;
+  }
+  if (count > 0)
+  {
+    memcpy(FBD_buffer + FBD_end, chars, count);
+    FBD_end += count;
+  }
+}
+
+void FBD_printf(const char* fmt, ...)
+{
+  int len;
+  char local_buf[FBD_LOCAL_BUF_LEN];
+  va_list va;
+  struct tm currentTimeStruct;  // Broken down time
+  timespec theTime;
+
+  clock_gettime(CLOCK_REALTIME, &theTime);
+
+  localtime_r(&theTime.tv_sec, &currentTimeStruct);
+  len = strftime(local_buf, FBD_LOCAL_BUF_LEN, "%H:%M:%S", &currentTimeStruct);
+  FBD_addChars(local_buf, len);
+  len = snprintf(local_buf, FBD_LOCAL_BUF_LEN, ".%03d ",
+                 (int)theTime.tv_nsec / 1000000);
+  FBD_addChars(local_buf, len);
+
+  va_start(va, fmt);
+  len = vsnprintf(local_buf, FBD_LOCAL_BUF_LEN, fmt, va);
+  va_end(va);
+
+  if (len > FBD_LOCAL_BUF_LEN)
+    len = FBD_LOCAL_BUF_LEN;
+  FBD_addChars(local_buf, len);
+}
+
+void FBD_printBuffer()
+{
+  int i;
+  if (FBD_size > FBD_BUFFER_LEN)
+  {
+    // Print the valid section of the pre-wrap buffer.
+    for (i = FBD_end; i < FBD_BUFFER_LEN; i++)
+    {
+      putchar(FBD_buffer[i]);
+    }
+  }
+  // Print the newest part of the buffer
+  for (i = 0; i < FBD_end; i++)
+  {
+    putchar(FBD_buffer[i]);
+  }
+  // Reset the buffer to empty.
+  FBD_size = 0;
+  FBD_end = 0;
+}
+
 void aws_DebugPrint(const char* fmt, ...)
 {
   va_list va;
@@ -127,7 +202,7 @@ void aws_DebugPrint(const char* fmt, ...)
   clock_gettime(CLOCK_REALTIME, &theTime);
 
   localtime_r(&theTime.tv_sec, &currentTimeStruct);
-  strftime((char*)buffer, 128, "%Y-%m-%d %H:%M:%S", &currentTimeStruct);
+  strftime((char*)buffer, 128, "%H:%M:%S", &currentTimeStruct);
   printf(buffer);
   printf(".%03d ", (int)theTime.tv_nsec / 1000000);
 
@@ -1522,6 +1597,15 @@ void Ros_MotionServer_JointTrajDataToIncQueue(Controller* controller,
   // Initialization of pointers and memory
   curTrajData = &ctrlGroup->jointMotionData;
   endTrajData = &ctrlGroup->jointMotionDataToProcess;
+
+  FBD_printf(
+      "add2q: %d, %d, p %f, %f, %f, %f, %f, %f, v %f, %f, %f, %f, %f, %f\r\n",
+      endTrajData->flag, endTrajData->time, endTrajData->pos[0],
+      endTrajData->pos[1], endTrajData->pos[2], endTrajData->pos[3],
+      endTrajData->pos[4], endTrajData->pos[5], endTrajData->vel[0],
+      endTrajData->vel[1], endTrajData->vel[2], endTrajData->vel[3],
+      endTrajData->vel[4], endTrajData->vel[5]);
+
   startTrajData = &_startTrajData;
   // Set the start of the trajectory interpolation as the current position
   // (which should be the end of last interpolation)
@@ -1812,7 +1896,6 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
   LONG q_time;
   int axis;
   LONG orig_q_cnt;
-  BOOL overage;
   // BOOL bNoData = TRUE;  // for testing
 
   printf("IncMoveTask Started\r\n");
@@ -1851,6 +1934,12 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
             moveData.grp_pos_info[i].pos_tag.data[3] = q->data[q->idx].frame;
             moveData.grp_pos_info[i].pos_tag.data[4] = q->data[q->idx].user;
 
+            FBD_printf("inc1: qc %d, q %d, t %d, p %d, %d, %d, %d, %d, %d",
+                       q->cnt, q->idx, time, q->data[q->idx].inc[0],
+                       q->data[q->idx].inc[1], q->data[q->idx].inc[2],
+                       q->data[q->idx].inc[3], q->data[q->idx].inc[4],
+                       q->data[q->idx].inc[5]);
+
             memcpy(&moveData.grp_pos_info[i].pos, &q->data[q->idx].inc,
                    sizeof(LONG) * MP_GRP_AXES_NUM);
 
@@ -1864,10 +1953,6 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
               if ((q_time <= q->data[q->idx].time) &&
                   (q->data[q->idx].time - q_time <= controller->interpolPeriod))
               {
-                aws_DebugPrint(
-                    "time diff = %d, time = %d, q_time = %d, int-per = %hd\r\n",
-                    q->data[q->idx].time - q_time, q->data[q->idx].time, q_time,
-                    controller->interpolPeriod);
                 // next incMove is part of same interpolation period
 
                 // check that information is in the same format
@@ -1887,6 +1972,12 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
                   moveData.grp_pos_info[i].pos[axis] +=
                       q->data[q->idx].inc[axis];
                 time = q->data[q->idx].time;
+
+                FBD_printf("inc2: qc %d, q %d, t %d, p %d, %d, %d, %d, %d, %d",
+                           q->cnt, q->idx, time, q->data[q->idx].inc[0],
+                           q->data[q->idx].inc[1], q->data[q->idx].inc[2],
+                           q->data[q->idx].inc[3], q->data[q->idx].inc[4],
+                           q->data[q->idx].inc[5]);
 
                 // increment index in the queue and decrease the count
                 q->idx = Q_OFFSET_IDX(q->idx, 1, Q_SIZE);
@@ -1910,7 +2001,6 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
                    sizeof(LONG) * MP_GRP_AXES_NUM);
           }
 
-          overage = FALSE;
           // For debugging of "excessive segment" errors, print out any excess.
           for (axis = 0; axis < MP_GRP_AXES_NUM; axis++)
           {
@@ -1918,19 +2008,11 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
                 abs(moveData.grp_pos_info[i].pos[axis]) >=
                     controller->ctrlGroups[i]->maxInc.maxIncrement[axis])
             {
-              overage = TRUE;
-              aws_DebugPrint(
-                  "mpExRcsIncrementMove over speed limit: axis %d = %d (max "
-                  "%d)\r\n",
-                  axis, moveData.grp_pos_info[0].pos[axis],
-                  controller->ctrlGroups[i]->maxInc.maxIncrement[axis]);
+              FBD_printf("mpExMv axis %d over: %d (max %d)\r\n", axis,
+                         moveData.grp_pos_info[0].pos[axis],
+                         controller->ctrlGroups[i]->maxInc.maxIncrement[axis]);
             }
           }
-          if (overage)
-            aws_DebugPrint("speed limit exceeded start q->cnt = %d, end q->cnt "
-                           "= %d, time = %d, q_time = %d, int-per = %hd\r\n",
-                           orig_q_cnt, q->cnt, time, q_time,
-                           controller->interpolPeriod);
 
           // Unlock the q
           mpSemGive(q->q_lock);
@@ -1973,6 +2055,13 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
       }
 #else
       ret = mpExRcsIncrementMove(&moveData);
+      FBD_printf("mpExMv: %d, %d, %d, %d, %d, %d ret %d\r\n",
+                 moveData.grp_pos_info[0].pos[0],
+                 moveData.grp_pos_info[0].pos[1],
+                 moveData.grp_pos_info[0].pos[2],
+                 moveData.grp_pos_info[0].pos[3],
+                 moveData.grp_pos_info[0].pos[4],
+                 moveData.grp_pos_info[0].pos[5], ret);
       if (ret != 0)
       {
         if (ret == -3)
@@ -1981,6 +2070,8 @@ void Ros_MotionServer_IncMoveLoopStart(Controller* controller)  //<-- IP_CLK
               moveData.ctrl_grp);
         else
           aws_DebugPrint("mpExRcsIncrementMove returned: %d\r\n", ret);
+
+        FBD_printBuffer();
       }
 #endif
     }
