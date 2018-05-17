@@ -120,14 +120,15 @@ extern int localtime_r(const time_t* timer, struct tm* timeBuffer);
 // It implements FBD_printf() which writes into a circular buffer
 // of characters, which can be printed to stdout and cleared with
 // a call to FBD_printBuffer().
-#define FBD_BUFFER_LEN 10000
+#define FBD_BUFFER_LEN 1000
 #define FBD_LOCAL_BUF_LEN 500
+/*
 char FBD_buffer[FBD_BUFFER_LEN];
 int FBD_size = 0;
 int FBD_end = 0;
-
+*/
 void FBD_addChars(const char* chars, int count)
-{
+{/*
   FBD_size += count;
   while (FBD_end + count >= FBD_BUFFER_LEN)
   {
@@ -142,10 +143,11 @@ void FBD_addChars(const char* chars, int count)
     memcpy(FBD_buffer + FBD_end, chars, count);
     FBD_end += count;
   }
+  */
 }
 
 void FBD_printf(const char* fmt, ...)
-{
+{/*
   int len;
   char local_buf[FBD_LOCAL_BUF_LEN];
   va_list va;
@@ -168,10 +170,11 @@ void FBD_printf(const char* fmt, ...)
   if (len > FBD_LOCAL_BUF_LEN)
     len = FBD_LOCAL_BUF_LEN;
   FBD_addChars(local_buf, len);
+*/
 }
 
 void FBD_printBuffer()
-{
+{/*
   int i;
   if (FBD_size > FBD_BUFFER_LEN)
   {
@@ -189,6 +192,7 @@ void FBD_printBuffer()
   // Reset the buffer to empty.
   FBD_size = 0;
   FBD_end = 0;
+*/
 }
 
 void aws_DebugPrint(const char* fmt, ...)

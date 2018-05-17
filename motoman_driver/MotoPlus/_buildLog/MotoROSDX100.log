@@ -1,15 +1,2 @@
-﻿  ------ Now building project: MotoRosDX100------
-  Compiling Controller.c
-Controller.c : warning : In function `Db_Print'
-Controller.c(960): warning : unused parameter `msgFormat'
-  Compiling CtrlGroup.c
-CtrlGroup.c : warning : In function `Ros_CtrlGroup_IsRobot'
-CtrlGroup.c(613): warning : comparison of unsigned expression >= 0 is always true
-  Compiling IoServer.c
-  Compiling MotionServer.c
-  Compiling mpMain.c
-  Compiling SimpleMessage.c
-  Compiling StateServer.c
-  Building MotoRosDX100.out
-  Build Successful!  Check 'DX100\MotoRosDX100' folder for MotoRosDX100.out
-  ------
+﻿mpBuilder : error : Problem with mpBuilder - A valid hardware key for DX100 MotoPlus was not found(0).  Make sure you have installed the Sentinel System Driver Installer included on your installation DVD.
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V140\Microsoft.MakeFile.Targets(41,5): error MSB3073: The command "mpbuilder.exe -c DX100 -p "C:\Users\hersh\Source\Repos\motoman\motoman_driver\MotoPlus\\" -n "MotoRosDX100" -o build" exited with code 1.
